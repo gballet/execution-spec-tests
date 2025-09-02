@@ -20,8 +20,9 @@ from ethereum_test_tools.vm.opcode import Opcodes as Op
 
 
 @pytest.mark.valid_from("Prague")
+@pytest.mark.parametrize("storage_value", [0x01 << 248, 0x01])
 def test_bloatnet_sstore_0_to_1(
-    blockchain_test: BlockchainTestFiller, pre: Alloc, fork: Fork, gas_benchmark_value: int
+    blockchain_test: BlockchainTestFiller, pre: Alloc, fork: Fork, gas_benchmark_value: int, storage_value: int
 ):
     """
     Benchmark test that maximizes SSTORE operations (0 -> 1) by filling
@@ -37,8 +38,7 @@ def test_bloatnet_sstore_0_to_1(
 
     tx_gas_cap = fork.transaction_gas_limit_cap() or gas_benchmark_value
 
-    storage_value = 1
-    calldata = storage_value.to_bytes(32, "big")
+    calldata = storage_value.to_bytes(32, "big").rstrip(b"\x00")
 
     total_sstores = 0
     total_block_gas_used = 0
@@ -116,8 +116,9 @@ def test_bloatnet_sstore_0_to_1(
 
 
 @pytest.mark.valid_from("Prague")
+@pytest.mark.parametrize("final_storage_value", [0x02 << 248, 0x02])
 def test_bloatnet_sstore_1_to_2(
-    blockchain_test: BlockchainTestFiller, pre: Alloc, fork: Fork, gas_benchmark_value: int
+    blockchain_test: BlockchainTestFiller, pre: Alloc, fork: Fork, gas_benchmark_value: int, final_storage_value: int
 ):
     """
     Benchmark test that maximizes SSTORE operations (1 -> 2).
@@ -129,9 +130,8 @@ def test_bloatnet_sstore_1_to_2(
     intrinsic_gas_calc = fork.transaction_intrinsic_cost_calculator()
     tx_gas_cap = fork.transaction_gas_limit_cap() or gas_benchmark_value
 
-    initial_value = 1
-    new_value = 2
-    calldata = new_value.to_bytes(32, "big")
+    initial_value = final_storage_value // 2
+    calldata = final_storage_value.to_bytes(32, "big").rstrip(b"\x00")
 
     total_sstores = 0
     total_block_gas_used = 0
@@ -194,7 +194,7 @@ def test_bloatnet_sstore_1_to_2(
         expected_storage_state[contract_address] = Account(
             storage=Storage(
                 {
-                    HashInt(slot): HashInt(new_value)
+                    HashInt(slot): HashInt(final_storage_value)
                     for slot in range(total_sstores, total_sstores + tx_sstores_count)
                 }
             )
